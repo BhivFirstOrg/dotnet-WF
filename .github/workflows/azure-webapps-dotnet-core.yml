@@ -1,14 +1,14 @@
 name: Build and deploy ASP.Net Core app to an Azure Web App
 
 env:
-  AZURE_WEBAPP_NAME: your-app-name    # set this to the name of your Azure Web App
+  AZURE_WEBAPP_NAME: MY_WEBAPP_NAME   # set this to your application's name
   AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
   DOTNET_VERSION: '5'                 # set this to the .NET Core version to use
 
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   build:
@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      
+
       - name: Set up dependency caching for faster builds
         uses: actions/cache@v3
         with:
@@ -29,7 +29,6 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
-
       - name: Build with dotnet
         run: dotnet build --configuration Release
 
@@ -42,24 +41,23 @@ jobs:
           name: .net-app
           path: ${{env.DOTNET_ROOT}}/myapp
 
-  deploy:
-    runs-on: ubuntu-latest
+  Deploy:
+    name: Deploying Web App
     needs: build
+    runs-on: ubuntu-latest
     environment:
-      name: 'Development'
+      name: Appservice
       url: https://web-app-bhiv.azurewebsites.net
-
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v3
+      - name: Download a Build Artifact
+        uses: actions/download-artifact@v2.0.7
         with:
           name: .net-app
           path: .
-
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2
+          
+      - name: Azure WebApp
+        uses: Azure/webapps-deploy@v2
         with:
           app-name: Web-App-Bhiv
+          package: . 
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
