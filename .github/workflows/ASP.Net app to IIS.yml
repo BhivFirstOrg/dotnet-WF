@@ -1,0 +1,57 @@
+name: Build and deploy ASP.Net Core app to IIS
+
+env:
+   DOTNET_VERSION: '5'                 # set this to the .NET Core version to use
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Set up dependency caching for faster builds
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+      - name: Build with dotnet
+        run: dotnet build --configuration Release
+
+      - name: dotnet publish
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v3
+        with:
+          name: .net-app
+          path: ${{env.DOTNET_ROOT}}/myapp
+
+  Deploy:
+    name: Deploying Web App
+    needs: build
+    runs-on: self-hosted
+    environment:
+      name: Appservice
+      url: https://web-app-bhiv.azurewebsites.net
+    steps:
+      - name: Download a Build Artifact
+        uses: actions/download-artifact@v2.0.7
+        with:
+          name: .net-app
+          path: ${{github.workspace}}\bhivIIfirst
+      
+      - name: Copying files
+        run: xcopy ${{github.workspace}}\bhivIIfirst D:\bhivIIfirst\ /S /Y /E
